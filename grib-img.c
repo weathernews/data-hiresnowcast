@@ -148,13 +148,15 @@ int extract(unsigned char *src_buf, int src_len, int maxv, int nbits, unsigned c
 #ifdef USE_PNG
 int png_save(char *filename, unsigned char *imgbuf, int total_gridw, int total_gridh)
 {
+  char tmpname[1024];
   FILE *fo;
   png_structp     png_ptr;
   png_infop       info_ptr;
   png_bytep *rowp;
   int j;
 
-  if ((fo = fopen(filename,"w")) == NULL) {
+  sprintf(tmpname,"%s.%d", filename, getpid());
+  if ((fo = fopen(tmpname,"w")) == NULL) {
     perror(filename);
     return -1;
   }
@@ -190,21 +192,25 @@ int png_save(char *filename, unsigned char *imgbuf, int total_gridw, int total_g
   png_destroy_write_struct(&png_ptr, &info_ptr);
   fclose(fo);
   free(rowp);
+  rename(tmpname,filename);
   return 0;
 }
 #endif
 
 int pgm_save(char *filename, unsigned char *imgbuf, int total_gridw, int total_gridh)
 {
+  char tmpname[1024];
   FILE *fo;
 
-  if ((fo = fopen(filename,"w")) == NULL) {
+  sprintf(tmpname,"%s.%d", filename, getpid());
+  if ((fo = fopen(tmpname,"w")) == NULL) {
     perror(filename);
     return -1;
   }
   fprintf(fo,"P5\n%d %d\n255\n",total_gridw, total_gridh);
   fwrite(imgbuf,1,total_gridw*total_gridh,fo);
   fclose(fo);
+  rename(tmpname,filename);
   return 0;
 }
 
