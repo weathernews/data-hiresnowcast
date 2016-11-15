@@ -391,6 +391,8 @@ int tile_save(time_t ft)
   int i,x,y,r;
   struct stat dstat;
   unsigned char *p, *q;
+  png_color palette[256];
+  png_byte trans[256];
 
   t = gmtime(&ft);
   strftime(outd,sizeof(outd),"%Y-%m-%d-%H-%M_Tiles",t);
@@ -406,8 +408,16 @@ int tile_save(time_t ft)
     rowp[y] = (unsigned char *)malloc(256 * 4);
   }
 
+  for (i = 0; i < 256; i++) {
+    palette[i].red   = clut_r[i];
+    palette[i].green = clut_g[i];
+    palette[i].blue  = clut_b[i];
+    trans[i] = clut_a[i];
+  }
+
   for (i = 0; i < tile_count; i++) {
     sprintf(outf,"%s/%s/%s.png", basedir, outd, tile[i].id);
+    if (verbose){printf("saving tile %s\n",outf);}
     if ((fp = fopen(outf,"w")) == NULL) {
       perror(outf);
       return -1;
@@ -417,11 +427,7 @@ int tile_save(time_t ft)
     for (y = 0; y < 256; y++){
       q = rowp[y];
       for (x = 0; x < 256; x++){
-        *q++ = clut_a[*p]; 
-        *q++ = clut_b[*p]; 
-        *q++ = clut_g[*p]; 
-        *q++ = clut_r[*p]; 
-        p++;
+        *q++ = *p++;
       }
     }
 
@@ -440,16 +446,19 @@ int tile_save(time_t ft)
       return -1;
     }
     png_init_io(png_ptr, fp);
-    png_set_IHDR(png_ptr, info_ptr, 256, 256,
-                 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
+    png_set_IHDR(png_ptr, info_ptr, 256, 256, 8,
+                 PNG_COLOR_TYPE_PALETTE, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-    png_set_bgr(png_ptr);
-    png_set_swap_alpha(png_ptr);
-    png_write_info(png_ptr, info_ptr);
-    png_write_image(png_ptr, rowp);
-    png_write_end(png_ptr, info_ptr);
+    png_set_PLTE(png_ptr, info_ptr, palette, 256);
+    png_set_tRNS(png_ptr, info_ptr, trans, 256, NULL);
+    png_set_rows(png_ptr, info_ptr, rowp);
+    png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
     png_destroy_write_struct(&png_ptr, &info_ptr);
     fclose(fp);
+  }
+
+  for (y = 0; y < 256; y++){
+    free(rowp[y]);
   }
   free(rowp);
 
